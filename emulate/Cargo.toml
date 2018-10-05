@@ -1,0 +1,11 @@
+[package]
+name = "emulate"
+version = "0.1.0"
+authors = ["Mark <mverleg.noreply@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+ndarray = "0.12.0"
+num-complex = "0.2"
+
+# Can use blas library with ndarray: https://github.com/bluss/ndarray
