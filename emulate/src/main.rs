@@ -26,6 +26,7 @@ struct Entangble {
 
 impl Entangble {
     pub fn new(qubits: usize) -> Self {
+        assert!(qubits > 0);
         if qubits > 5 {
             eprintln!("Emulating a quantum computer with {} qubits may not finish in feasible amount of time", qubits)
         }
@@ -37,21 +38,22 @@ impl Entangble {
 
 impl Display for Entangble {
     fn fmt<'a>(&self, f: &mut Formatter<'a>) -> Result<(), Error> {
-        println!("!!");
+        println!("{}-state entangled quantum system:", self.qubits);
         for j in 0 .. self.states {
-            writeln!(f, "|{}> {}",
-                    to_state_repr_binary(j, self.states),
-                    self.wf[j],
+            //TODO @mark: format abs as |+++++   |
+            writeln!(f, " |{}> {:8}  {:12}",
+                    to_state_repr_binary(j, self.qubits),
+                     self.wf[j].norm(), self.wf[j]
             )?;
         }
         Ok(())
     }
 }
 
-fn to_state_nrs_binary(mut index: usize, state_cnt: usize) -> Vec<usize> {
+fn to_state_nrs_binary(mut index: usize, subsys_cnt: usize) -> Vec<usize> {
     let states_per_subsys = 2;
-    let mut nrs = Vec::with_capacity(state_cnt);
-    for _ in 0 .. state_cnt {
+    let mut nrs = Vec::with_capacity(subsys_cnt);
+    for _ in 0 .. subsys_cnt {
         nrs.push(index % states_per_subsys);
         index /= states_per_subsys;
     }
@@ -59,8 +61,8 @@ fn to_state_nrs_binary(mut index: usize, state_cnt: usize) -> Vec<usize> {
     nrs
 }
 
-fn to_state_repr_binary(index: usize, state_cnt: usize) -> String {
-    to_state_nrs_binary(index, state_cnt).iter()
+fn to_state_repr_binary(index: usize, subsys_cnt: usize) -> String {
+    to_state_nrs_binary(index, subsys_cnt).iter()
         .map(|nr| format!("{}", nr))
         .collect::<Vec<_>>().join("")
 }
