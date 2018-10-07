@@ -37,9 +37,12 @@ impl Entangble {
 
 impl Display for Entangble {
     fn fmt<'a>(&self, f: &mut Formatter<'a>) -> Result<(), Error> {
+        println!("!!");
         for j in 0 .. self.states {
-            write!(f, "|{}> ", to_state_repr_binary(j, self.state))?;
-            writeln!(f, "")?;  //TODO @mark:
+            writeln!(f, "|{}> {}",
+                    to_state_repr_binary(j, self.states),
+                    self.wf[j],
+            )?;
         }
         Ok(())
     }
@@ -48,8 +51,8 @@ impl Display for Entangble {
 fn to_state_nrs_binary(mut index: usize, state_cnt: usize) -> Vec<usize> {
     let states_per_subsys = 2;
     let mut nrs = Vec::with_capacity(state_cnt);
-    for k in 0 .. state_cnt {
-        nrs.append(index % states_per_subsys);
+    for _ in 0 .. state_cnt {
+        nrs.push(index % states_per_subsys);
         index /= states_per_subsys;
     }
     nrs.reverse();
@@ -59,7 +62,7 @@ fn to_state_nrs_binary(mut index: usize, state_cnt: usize) -> Vec<usize> {
 fn to_state_repr_binary(index: usize, state_cnt: usize) -> String {
     to_state_nrs_binary(index, state_cnt).iter()
         .map(|nr| format!("{}", nr))
-        .collect().join("")
+        .collect::<Vec<_>>().join("")
 }
 
 /// System consisting of multiple entangled ensembles
@@ -69,7 +72,7 @@ struct System {
 
 pub fn main() {
     let qsys = Entangble::new(4);
-
+    println!("{}", qsys);
 //    let xs = Array::from_vec(vec![Complex::new(1., 1.), Complex::new(3., -1.)]);
 //    println!("xs: {}", xs);  //TODO: mark (temporary)
 //    assert!(xs.dot(&xs) == Complex::new(12., 0.));
