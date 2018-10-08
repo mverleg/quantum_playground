@@ -59,6 +59,7 @@ impl Display for Entangble {
     }
 }
 
+/// Convert a state index to a vector of state numbers, e.g. `[0, 0, 1, 0]` which'd be index `2`.
 fn to_state_nrs_binary(mut index: usize, subsys_cnt: usize) -> Vec<usize> {
     let states_per_subsys = 2;
     let mut nrs = Vec::with_capacity(subsys_cnt);
@@ -70,6 +71,7 @@ fn to_state_nrs_binary(mut index: usize, subsys_cnt: usize) -> Vec<usize> {
     nrs
 }
 
+/// Print a mixed state, e.g. `"0010"` for `|0> x |0> x |1> x |0>` which'd be index `2`.
 fn to_state_repr_binary(index: usize, subsys_cnt: usize) -> String {
     to_state_nrs_binary(index, subsys_cnt).iter()
         .map(|nr| format!("{}", nr))
@@ -97,15 +99,4 @@ struct System {
 pub fn main() {
     let qsys = Entangble::new(4);
     println!("{}", qsys);
-//    let xs = Array::from_vec(vec![Complex::new(1., 1.), Complex::new(3., -1.)]);
-//    println!("xs: {}", xs);  //TODO: mark (temporary)
-//    assert!(xs.dot(&xs) == Complex::new(12., 0.));
 }
-
-//#[cfg(test)]
-//mod tests {
-//    #[test]
-//    fn it_works() {
-//        assert_eq!(2 + 2, 4);
-//    }
-//}
