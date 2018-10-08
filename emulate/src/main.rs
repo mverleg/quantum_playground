@@ -5,6 +5,11 @@ extern crate core;
 use num_complex::Complex;
 use core::fmt::{Display, Error, Formatter};
 
+pub fn zero() -> Complex<f64> {
+    // Cannot import Complex::one() for some reason
+    return Complex::new(0., 0.)
+}
+
 pub fn one() -> Complex<f64> {
     // Cannot import Complex::one() for some reason
     return Complex::new(1., 0.)
@@ -31,7 +36,11 @@ impl Entangble {
             eprintln!("Emulating a quantum computer with {} qubits may not finish in feasible amount of time", qubits)
         }
         let states = 2usize.pow(qubits as u32);
-        let wf = vec![one(); states];
+        let mut wf = vec![zero(); states];
+        for k in 0 .. qubits {
+            //TODO @mark: what IS the correct initialization? which are the pure states? I guess if it were a matrix it'd need to be normalized...
+            wf[k * qubits + k] = one()
+        }
         Entangble { qubits, states, wf }
     }
 }
@@ -40,10 +49,10 @@ impl Display for Entangble {
     fn fmt<'a>(&self, f: &mut Formatter<'a>) -> Result<(), Error> {
         println!("{}-state entangled quantum system:", self.qubits);
         for j in 0 .. self.states {
-            //TODO @mark: format abs as |+++++   |
-            writeln!(f, " |{}> {:8}  {:12}",
+            writeln!(f, " |{}> {} {:12}",
                     to_state_repr_binary(j, self.qubits),
-                     self.wf[j].norm(), self.wf[j]
+                     norm_ascii_log_magnitude(self.wf[j].norm(), 8),
+                     self.wf[j]
             )?;
         }
         Ok(())
@@ -64,6 +73,19 @@ fn to_state_nrs_binary(mut index: usize, subsys_cnt: usize) -> Vec<usize> {
 fn to_state_repr_binary(index: usize, subsys_cnt: usize) -> String {
     to_state_nrs_binary(index, subsys_cnt).iter()
         .map(|nr| format!("{}", nr))
+        .collect::<Vec<_>>().join("")
+}
+
+/// Show the magnitude as a (0, 1) number as ****-symbols
+fn norm_ascii_log_magnitude(magnitude: f64, steps: u8) -> String {
+    if magnitude < 0. {
+        return "NEGATIVE".to_owned()
+    }
+    if magnitude > 1. {
+        return "TOO BIG ".to_owned()
+    }
+    (1 .. steps + 1)
+        .map(|k| if magnitude > (0.5f64).powf(k as f64) { "*" } else { " " })
         .collect::<Vec<_>>().join("")
 }
 
