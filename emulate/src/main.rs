@@ -1,3 +1,7 @@
+
+//TODO @mark: allow dead code during dev
+#![allow(dead_code)]
+
 extern crate ndarray;
 extern crate num_complex;
 extern crate core;
@@ -37,10 +41,7 @@ impl Entangble {
         }
         let states = 2usize.pow(qubits as u32);
         let mut wf = vec![zero(); states];
-        for k in 0 .. qubits {
-            //TODO @mark: what IS the correct initialization? which are the pure states? I guess if it were a matrix it'd need to be normalized...
-            wf[k * qubits + k] = one()
-        }
+        wf[0] = one();
         Entangble { qubits, states, wf }
     }
 }
@@ -49,10 +50,10 @@ impl Display for Entangble {
     fn fmt<'a>(&self, f: &mut Formatter<'a>) -> Result<(), Error> {
         println!("{}-state entangled quantum system:", self.qubits);
         for j in 0 .. self.states {
-            writeln!(f, " |{}> {} {:12}",
+            writeln!(f, " |{}> {}  {:.3} + {:.3}i",
                     to_state_repr_binary(j, self.qubits),
                      norm_ascii_log_magnitude(self.wf[j].norm(), 8),
-                     self.wf[j]
+                     self.wf[j].re, self.wf[j].im
             )?;
         }
         Ok(())
