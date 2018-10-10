@@ -44,6 +44,10 @@ impl Entangble {
         wf[0] = one();
         Entangble { qubits, states, wf }
     }
+
+    pub fn check_norm(&self) {
+        assert!((self.wf.iter().map(|v| v.norm()).sum::<f64>() - 1.) < 1e-8);
+    }
 }
 
 impl Display for Entangble {
