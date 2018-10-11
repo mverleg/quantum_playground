@@ -9,6 +9,8 @@ extern crate core;
 use num_complex::Complex;
 use core::fmt::{Display, Error, Formatter};
 
+//TODO @mark: turn State into a type (which wraps a usize and is printable as |010>)
+
 pub fn zero() -> Complex<f64> {
     // Cannot import Complex::one() for some reason
     return Complex::new(0., 0.)
@@ -17,6 +19,16 @@ pub fn zero() -> Complex<f64> {
 pub fn one() -> Complex<f64> {
     // Cannot import Complex::one() for some reason
     return Complex::new(1., 0.)
+}
+
+pub trait QuantumState {
+    /// Observe (and collapse) the whole system. The system itself will be in a pure quantum state,
+    /// and the integer values per state will be returned.
+    fn observe(&mut self) -> usize;
+
+//    /// Observe the system and return the classical probability distribution.
+//    /// This cannot be done on a real quantum computer, but is one of the perks of an emulator.
+//    fn spy_probabilities(&mut self) -> Vec<u8>;
 }
 
 /// Qubit (qbit)
@@ -40,13 +52,35 @@ impl Entangble {
             eprintln!("Emulating a quantum computer with {} qubits may not finish in feasible amount of time", qubits)
         }
         let states = 2usize.pow(qubits as u32);
-        let mut wf = vec![zero(); states];
-        wf[0] = one();
-        Entangble { qubits, states, wf }
+        let mut ent = Entangble { qubits, states, wf };
+        ent.set_pure(0);
+        ent
     }
 
+    /// Collapse into one pure state
+    fn set_pure(&mut self, index: usize) {
+        let mut wf = vec![zero(); states];
+        wf[0] = one();
+    }
+
+    /// Calculate the classical probabilities (which one wouldn't be able to do on a real quantum computer, but can be done on the emulator).
+    fn calc_probs(&self) -> Vec<f64> {
+        self.wf.iter().map(|v| v.norm()).collect()
+    }
+
+    /// Check that the total occupation is still unity
     pub fn check_norm(&self) {
         assert!((self.wf.iter().map(|v| v.norm()).sum::<f64>() - 1.) < 1e-8);
+    }
+}
+
+impl QuantumState for Entangble {
+    fn observe(&mut self) -> usize {
+        let probs = self.calc_probs();
+        let pick = weighted_choice(&probs, &mut self.rng);
+        self.set_pure(pick);
+        pick
+        //TODO @mark: partial observation
     }
 }
 
@@ -102,6 +136,9 @@ struct System {
 }
 
 pub fn main() {
-    let qsys = Entangble::new(4);
+    let mut rng = rand::thread_rng();
+    let mut qsys = Entangble::new(4, rng);
+    println!("{}", qsys);
+    println!("{:?}", qsys.observe());
     println!("{}", qsys);
 }
