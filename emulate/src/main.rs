@@ -12,6 +12,8 @@ use num_complex::Complex;
 use rand::Rng;
 
 //TODO @mark: turn State into a type (which wraps a usize and is printable as |010>)
+/// Since this uses potentially u32 as index of states and there are 2^n states, at most 32 qubits can be used.
+/// Although that'd already require 8GB if RAM to hold state, and an *extreme* amount of processing power.
 
 pub fn zero() -> Complex<f64> {
     // Cannot import Complex::one() for some reason
@@ -39,7 +41,10 @@ pub fn weighted_choice<R: Rng>(weights: &Vec<f64>, mut rng: R) -> usize {
 pub trait QuantumState {
     /// Observe (and collapse) the whole system. The system itself will be in a pure quantum state,
     /// and the integer values per state will be returned.
-    fn observe(&mut self) -> usize;
+    fn observe(&mut self) -> Vec<bool>;
+
+    /// Observe one subsystem, only partially collapsing the wavefunction.
+    fn observe_sub(&mut self, index: usize) -> bool;
 
 //    /// Observe the system and return the classical probability distribution.
 //    /// This cannot be done on a real quantum computer, but is one of the perks of an emulator.
@@ -83,8 +88,15 @@ impl <R: Rng> Entangble<R> {
     }
 
     /// Calculate the classical probabilities (which one wouldn't be able to do on a real quantum computer, but can be done on the emulator).
+    //TODO @mark: this is wrong, it should be |c|^2 not |c| EVERYWHERE (preferably in one operation?). -> norm_sqr
     fn calc_probs(&self) -> Vec<f64> {
         self.wf.iter().map(|v| v.norm()).collect()
+    }
+
+    /// Choose one substate at weighted-random and return its index (without collapsing the wavefunction; for internal use).
+    fn weighted_random_substate(&self) -> usize {
+        let probs = self.calc_probs();
+        weighted_choice(&probs, self.rng)
     }
 
     /// Check that the total occupation is still unity
@@ -94,12 +106,36 @@ impl <R: Rng> Entangble<R> {
 }
 
 impl<R: Rng> QuantumState for Entangble<R> {
-    fn observe(&mut self) -> usize {
-        let probs = self.calc_probs();
-        let pick = weighted_choice(&probs, &mut self.rng);
+    //TODO @mark: change to returning a boolean vector
+    fn observe(&mut self) -> Vec<bool> {
+        let pick = self.weighted_random_substate();
         self.set_pure(pick);
-        pick
-        //TODO @mark: partial observation
+        to_state_nrs_binary(pick, self.states)
+    }
+
+    // More info: https://www.youtube.com/watch?v=MG_9JWsrKtM
+    fn observe_sub(&mut self, qubit_index: usize) -> bool {
+        // TODO LATER: perhaps this can be sped up...
+        // Pick a random entangled state and get the cubit value
+        let pick = self.weighted_random_substate();
+        let state_value = to_single_state_binary_val(pick, qubit_index);
+
+        // Collapse all the states that don't match the value
+        for state_nr in 0 .. self.states {
+            if state_value != to_single_state_binary_val(state_nr, qubit_index) {
+                self.wf[state_nr] = zero()
+            }
+        }
+
+        // Renormalize
+        let total_prob_left: f64 = self.calc_probs().iter().sum();
+        for state in self.wf.iter_mut() {
+            *state /= total_prob_left;
+        }
+        self.check_norm();
+
+        // Return
+        state_value
     }
 }
 
@@ -117,22 +153,27 @@ impl<R: Rng> Display for Entangble<R> {
     }
 }
 
+/// Extract the value of a subsystem state index, e.g. `[0, 0, 1, 0]` which'd be index `2` and qubit `2`'d have value `1`.
+fn to_single_state_binary_val(mut state_nr: usize, qubit_nr: usize) -> bool {
+    if ((1 << qubit_nr) & state_nr) >> qubit_nr == 1 { true} else { false }
+}
+
 /// Convert a state index to a vector of state numbers, e.g. `[0, 0, 1, 0]` which'd be index `2`.
-fn to_state_nrs_binary(mut index: usize, subsys_cnt: usize) -> Vec<usize> {
-    let states_per_subsys = 2;
+fn to_state_nrs_binary(mut state_nr: usize, subsys_cnt: usize) -> Vec<bool> {
+    let states_per_subsys = 2; // return type needs to change if this stops being binary
     let mut nrs = Vec::with_capacity(subsys_cnt);
     for _ in 0 .. subsys_cnt {
-        nrs.push(index % states_per_subsys);
-        index /= states_per_subsys;
+        nrs.push(if state_nr % states_per_subsys == 0 { false } else { true });
+        state_nr /= states_per_subsys;
     }
     nrs.reverse();
     nrs
 }
 
 /// Print a mixed state, e.g. `"0010"` for `|0> x |0> x |1> x |0>` which'd be index `2`.
-fn to_state_repr_binary(index: usize, subsys_cnt: usize) -> String {
-    to_state_nrs_binary(index, subsys_cnt).iter()
-        .map(|nr| format!("{}", nr))
+fn to_state_repr_binary(state_nr: usize, subsys_cnt: usize) -> String {
+    to_state_nrs_binary(state_nr, subsys_cnt).iter()
+        .map(|nr| format!("{}", if *nr { 1 } else { 0 }))
         .collect::<Vec<_>>().join("")
 }
 
