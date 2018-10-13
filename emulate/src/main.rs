@@ -45,16 +45,7 @@ pub trait QuantumState {
 
     /// Observe one subsystem, only partially collapsing the wavefunction.
     fn observe_sub(&mut self, index: usize) -> bool;
-
-//    /// Observe the system and return the classical probability distribution.
-//    /// This cannot be done on a real quantum computer, but is one of the perks of an emulator.
-//    fn spy_probabilities(&mut self) -> Vec<u8>;
 }
-
-/// Qubit (qbit)
-/// There are really only 3 degrees of freedom, since this should be normalized
-//TODO @mark: remove this? I don't think it's useful to consider isolated qubits in an entangled system
-struct Qubit(Complex<f64>, Complex<f64>);
 
 /// Entangled (sub)system
 /// Combination of 'entangled' and 'ensemble', haha!
@@ -88,9 +79,8 @@ impl <R: Rng> Entangble<R> {
     }
 
     /// Calculate the classical probabilities (which one wouldn't be able to do on a real quantum computer, but can be done on the emulator).
-    //TODO @mark: this is wrong, it should be |c|^2 not |c| EVERYWHERE (preferably in one operation?). -> norm_sqr
     fn calc_probs(&self) -> Vec<f64> {
-        self.wf.iter().map(|v| v.norm()).collect()
+        self.wf.iter().map(|v| v.norm_sqr()).collect()
     }
 
     /// Choose one substate at weighted-random and return its index (without collapsing the wavefunction; for internal use).
@@ -116,7 +106,7 @@ impl<R: Rng> QuantumState for Entangble<R> {
 
     // More info: https://www.youtube.com/watch?v=MG_9JWsrKtM
     fn observe_sub(&mut self, qubit_index: usize) -> bool {
-        // TODO LATER: perhaps this can be sped up...
+        // TODO LATER: perhaps this can be sped up a bit...
         // Pick a random entangled state and get the cubit value
         let pick = self.weighted_random_substate();
         let state_value = to_single_state_binary_val(pick, qubit_index);
@@ -146,7 +136,7 @@ impl<R: Rng> Display for Entangble<R> {
         for j in 0 .. self.states {
             writeln!(f, " |{}> {}  {:.3} + {:.3}i",
                     to_state_repr_binary(j, self.qubits),
-                     norm_ascii_log_magnitude(self.wf[j].norm(), 8),
+                     norm_ascii_log_magnitude(self.wf[j].norm_sqr(), 8),
                      self.wf[j].re, self.wf[j].im
             )?;
         }
