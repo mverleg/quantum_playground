@@ -25,7 +25,7 @@ pub fn one() -> Complex<f64> {
     return Complex::new(1., 0.)
 }
 
-pub fn weighted_choice<R: Rng>(weights: &Vec<f64>, mut rng: R) -> usize {
+pub fn weighted_choice<R: Rng>(weights: &Vec<f64>, rng: &mut R) -> usize {
     assert!((weights.iter().sum::<f64>() - 1.) < 1e-8);
     let mut cumsum = 0.;
     let choice = rng.gen();
@@ -94,9 +94,9 @@ impl <R: Rng> Entangble<R> {
     }
 
     /// Choose one substate at weighted-random and return its index (without collapsing the wavefunction; for internal use).
-    fn weighted_random_substate(&self) -> usize {
+    fn weighted_random_substate(&mut self) -> usize {
         let probs = self.calc_probs();
-        weighted_choice(&probs, self.rng)
+        weighted_choice(&probs, &mut self.rng)
     }
 
     /// Check that the total occupation is still unity
@@ -108,9 +108,10 @@ impl <R: Rng> Entangble<R> {
 impl<R: Rng> QuantumState for Entangble<R> {
     //TODO @mark: change to returning a boolean vector
     fn observe(&mut self) -> Vec<bool> {
+        //TODO @mark: this returns the wrong length (and possibly wrong values?)
         let pick = self.weighted_random_substate();
         self.set_pure(pick);
-        to_state_nrs_binary(pick, self.states)
+        to_state_nrs_binary(pick, self.qubits)
     }
 
     // More info: https://www.youtube.com/watch?v=MG_9JWsrKtM
@@ -141,7 +142,7 @@ impl<R: Rng> QuantumState for Entangble<R> {
 
 impl<R: Rng> Display for Entangble<R> {
     fn fmt<'a>(&self, f: &mut Formatter<'a>) -> Result<(), Error> {
-        println!("{}-state entangled quantum system:", self.qubits);
+        writeln!(f, "{}-state entangled quantum system:", self.qubits);
         for j in 0 .. self.states {
             writeln!(f, " |{}> {}  {:.3} + {:.3}i",
                     to_state_repr_binary(j, self.qubits),
@@ -154,7 +155,7 @@ impl<R: Rng> Display for Entangble<R> {
 }
 
 /// Extract the value of a subsystem state index, e.g. `[0, 0, 1, 0]` which'd be index `2` and qubit `2`'d have value `1`.
-fn to_single_state_binary_val(mut state_nr: usize, qubit_nr: usize) -> bool {
+fn to_single_state_binary_val(state_nr: usize, qubit_nr: usize) -> bool {
     if ((1 << qubit_nr) & state_nr) >> qubit_nr == 1 { true} else { false }
 }
 
@@ -196,7 +197,7 @@ struct System {
 }
 
 pub fn main() {
-    let mut rng = rand::thread_rng();
+    let rng = rand::thread_rng();
     let mut qsys = Entangble::new(4, rng);
     println!("{}", qsys);
     println!("{:?}", qsys.observe());
